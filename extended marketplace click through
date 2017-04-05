@@ -1,0 +1,44 @@
+-- Leonards Code - 4th April 2016
+
+--Expanded Marketplace Click Through
+
+--Visitors to results page
+create temp table results_page_visitors as 
+select dw_eff_dt, dw_site_visitor_id 
+from dw_views.dw_page_view_enriched
+where dw_eff_dt between '2017-03-01' and '2017-03-31'
+and view_page_path_tx = 'personal-loans/pre-qualify/results';
+
+--How many of these visitors didn't have any offers 
+create temp table visitors_with_offers as 
+select dw_site_visitor_id, count(*) as offers
+from dw_report.dw_prequal_offer_event_pl_f
+where dw_eff_dt between '2017-03-01' and '2017-03-31'
+and prequal_event_type = 'OFFER'
+group by 1;
+
+--Who hit the results page but didn't get offers
+create temp table visitors_expanded_marketplace as 
+select a.*, case when b.dw_site_visitor_id is null then 0 else 1 end as received_offer
+from results_page_visitors a 
+left join visitors_with_offers b 
+    on a.dw_site_visitor_id = b.dw_site_visitor_id
+;
+
+--Check what % of visitors to results page received any offers 
+select dw_eff_dt, count(distinct dw_site_visitor_id)
+, count(distinct case when received_offer = 1 then dw_site_visitor_id end)
+from visitors_expanded_marketplace group by 1;
+
+select count(distinct dw_site_visitor_id)
+, count(distinct case when received_offer = 1 then dw_site_visitor_id end)
+from visitors_expanded_marketplace;
+
+--Clicks from expanded marketplace 
+select src_prod_nm, is_prequal_in, count(dw_site_visitor_id) as clickers 
+from 
+dw_views.dw_clicks_enriched
+where page_path_tx = 'personal-loans/pre-qualify/results'
+and dw_eff_dt between '2017-03-01' and '2017-03-31'
+and is_prequal_in = 0 
+group by 1,2
