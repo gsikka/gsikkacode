@@ -1,0 +1,35 @@
+-- get the product id for Upstart
+-- NOTE - Remember use prod_nm since upstart has >1  product sk. the ones with 6- are non Pre-Qual and the one with 14- are Pre-Qual
+create temp table upstart as 
+select distinct dw_site_prod_sk, aflt_issue_partner_nm , 
+prod_nm	,slug_tx,	dw_slug_tx,	dw_prod_nm
+from dw_report.dw_prod_d
+where vertical_nm = 'Loans' and prod_nm = 'upstart';
+
+
+
+
+--list all the visitor id's who didnt have an offer from Upstart in week of march 25-31st
+create temp table visitors__no_upstartoffers as 
+select dw_site_visitor_id
+from dw_report.dw_prequal_offer_event_pl_f
+where dw_eff_dt between '2017-03-25' and '2017-03-31' and prequal_event_type = 'REJECTION' and dw_site_prod_sk in (select dw_site_prod_sk from upstart) ; 
+
+
+--How many of these visitors didn't have any offers in week of march 25-31st
+create temp table visitors_no_lenderoffers as 
+select dw_site_visitor_id, sum(CASE WHEN prequal_event_type = 'OFFER' THEN 1 ELSE 0 END) as numofoffers
+from dw_report.dw_prequal_offer_event_pl_f
+where dw_eff_dt between '2017-01-01' and '2017-03-31'
+group by 1 
+ORDER BY numofoffers ;
+
+
+
+
+-- TO CHECK/FOLLOW UP  - can discuss later
+-- Check with Leonard why this doesnt work like above???
+select distinct dw_site_prod_sk, aflt_issue_partner_nm , 
+prod_nm	,slug_tx,	dw_slug_tx,	dw_prod_nm
+from dw_report.dw_prod_d
+where vertical_nm = '%Loans%'  and aflt_issue_partner_nm= '%Upstart%';
